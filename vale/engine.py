@@ -4,7 +4,7 @@ import uuid
 from math import ceil, floor
 from . import data as D
 from .models import Character, Item, State, Exit, Element
-from .dungeon import chance, dice, weighted, tier_item, treasure, spawn, generate
+from .dungeon import chance, dice, weighted, tier_item, treasure, spawn, generate, silver_cache
 
 
 class Game:
@@ -155,6 +155,7 @@ class Game:
         self.state.rooms = {}
         self.state.current = self.state.previous = None
         self.state.location = 'Labyrinth'
+        self.state.expedition_silver = 0
         self.say('THE LABYRINTH\nThe light of the outside world fades behind you as the gloom and damp press in.\nYou see...')
         self.advance(D.ACTION_MINUTES['move'])
         if not self.p.dead:
@@ -218,7 +219,8 @@ class Game:
         self.advance(D.ACTION_MINUTES['move'])
         if self.p.dead:
             return
-        value = 0
+        value = self.state.expedition_silver
+        self.state.expedition_silver = 0
         for item in self.p.all_items():
             if item.name in D.TREASURES and item.found and not item.extracted:
                 value += D.TREASURES[item.name]
@@ -236,7 +238,12 @@ class Game:
         if self.darkness:
             raise ValueError('You cannot make out the loot in the darkness. Find light first.')
         item = self.room.loot[index]
-        self.p.add(item)
+        if item.name == 'Loose Silver':
+            self.p.silver += item.silver_amount
+            if item.found and not item.extracted:
+                self.state.expedition_silver += item.silver_amount
+        else:
+            self.p.add(item)
         self.room.loot.pop(index)
         self.say(f'You take {item.label}.')
         self.advance(D.ACTION_MINUTES['interact'])
@@ -339,7 +346,19 @@ class Game:
         if name in ('Locked Chest', 'Locked Door') and not self.pick_lock(element):
             return
         element.done = True
-        if name == 'Deep Shaft':
+        if name in D.CONTEXT_ACTIONS:
+            if name == 'Floor Shaft':
+                if element.animal == 'navigable':
+                    self.room.elements.append(Element('Deep Shaft'))
+                    self.say('The shaft reaches a lower passage. Rope would allow a safe descent.')
+                else:
+                    self.say('The shaft narrows into a drain. There is no useful way down.')
+            elif name in D.CONTEXT_OUTCOMES:
+                table = D.CONTEXT_OUTCOMES[name]
+                self.outcome(weighted(self.rng, [t[0] for t in table], [t[1] for t in table]))
+            else:
+                self.say('You examine it closely. Nothing useful is found; the worn stone keeps its secrets.')
+        elif name == 'Deep Shaft':
             self.room.exits.append(Exit('Rope down the shaft', depth_change=1))
             self.say('You secure your rope. A descent is now available.')
         elif name == 'Locked Door':
@@ -373,7 +392,15 @@ class Game:
             self.arrive()
 
     def outcome(self, result):
-        if result == 'Treasure':
+        if result == 'Silver':
+            self.room.loot.append(silver_cache(self.rng))
+            self.say('A few loose coins lie within reach.')
+        elif result in ('Undead', 'Undead Treasure'):
+            self.room.monsters.append(spawn(self.rng, self.rng.choice(['Skeleton', 'Zombie'])))
+            self.say('Bones shift in the dark. An undead creature rises!')
+            if result == 'Undead Treasure':
+                self.outcome('Treasure')
+        elif result == 'Treasure':
             self.room.loot.append(treasure(self.rng, self.room.secret))
             self.say('Something of value lies within reach.')
         elif result == 'Item':
@@ -443,7 +470,7 @@ class Game:
             self.p.gain_xp(D.THREAT_XP[threat], self.state.minute)
             if monster.petrified:
                 continue
-            self.say(f'{monster.name} dies.')
+            self.say(f'{monster.name} dies. {D.THREAT_XP[threat] * (1 + D.MEAL_XP_BONUS if self.p.active("Well Fed", self.state.minute) else 1):g} XP awarded.')
             self.room.loot.extend(monster.gear)
             if monster.name in ('Giant Rat', 'Cave Bat', 'Giant Spider', 'Cave Bear'):
                 self.room.harvest.append(monster.name)
@@ -470,8 +497,14 @@ class Game:
         armor = dice(self.rng, D.MONSTERS[monster.name][2])[0]
         if name == 'Mace':
             armor = max(0, armor - 1)
+        before_armor = damage
         damage = max(0, damage - armor)
+        self.say(f'Weapon roll: {rolled}; damage before armor: {before_armor}; armor absorbs {min(armor, before_armor)}; damage dealt: {damage}.')
+        if monster.poisoned:
+            self.say(f'{monster.name} is Poisoned.')
         headshot = monster.name == 'Zombie' and maximum
+        if headshot:
+            self.say('Headshot! The Zombie collapses regardless of remaining HP.')
         return max(monster.hp, damage) if headshot else damage
 
     def attack(self, target=0, shield_decider=None):
@@ -547,8 +580,10 @@ class Game:
                 self.p.equipment[shield_slot] = None
                 self.say('Your shield splinters, negating the hit entirely.')
                 continue
-            damage = max(0, damage - self.armor())
-            self.say(f'{monster.name} hits you for {damage}.')
+            rolled = damage
+            absorbed = min(damage, self.armor())
+            damage -= absorbed
+            self.say(f'{monster.name} hits you for {damage}. Damage rolled: {rolled}; armor absorbs {absorbed}.')
             self.hurt(damage, f'Killed by {monster.name}')
             if not self.p.dead and monster.name == 'Giant Spider' and damage and chance(self.rng, 100 / self.p.might):
                 self.poison()
@@ -582,7 +617,8 @@ class Game:
             # The entrance room's incoming exit leads outside.
             self.say('You escape through the entrance.')
             self.state.location = 'Vale'
-            value = sum(D.TREASURES[i.name] for i in self.p.all_items() if i.name in D.TREASURES and i.found and not i.extracted)
+            value = self.state.expedition_silver + sum(D.TREASURES[i.name] for i in self.p.all_items() if i.name in D.TREASURES and i.found and not i.extracted)
+            self.state.expedition_silver = 0
             for item in self.p.all_items():
                 if item.name in D.TREASURES and item.found:
                     item.extracted = True

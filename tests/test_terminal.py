@@ -23,11 +23,11 @@ class TerminalTests(unittest.TestCase):
                 1, 2,            # New game; go to Vale.
                 7, 3, 1, 5,      # Inventory; use first Torch; back.
                 6, 5, 1, 2,      # Enter; collect Tin Cup; return.
-                2, 2, 4,         # Merchant; sell the Tin Cup.
-                1, 2,            # Tavern; talk to adventurers.
+                2, 2, 4, 3,      # Merchant; sell the Tin Cup; leave.
+                1, 2, 3,         # Tavern; talk to adventurers; leave.
                 3, 5,            # Shrine; leave (no treatment purchased).
                 4, 3,            # Inn; leave (no room purchased).
-                5,               # Graveyard includes living adventurer.
+                5, 1,            # Graveyard includes living adventurer; leave.
                 8, 2, 8, 4,      # Save/quit; continue; save/quit; main quit.
             ]
             result = self.run_game(directory, commands)
@@ -43,6 +43,13 @@ class TerminalTests(unittest.TestCase):
             self.assertEqual(raw['state']['player']['fortune'], 1)
             self.assertGreater(raw['state']['player']['silver'], 0)
             self.assertFalse(raw['state']['player']['dead'])
+
+    def test_main_menu_graveyard_without_character(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.run_game(directory, [3, 4])
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('THE GRAVEYARD', result.stdout)
+            self.assertNotIn('Traceback', result.stderr)
 
     def test_invalid_input_and_eof_save(self):
         with tempfile.TemporaryDirectory() as directory:

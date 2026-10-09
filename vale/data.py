@@ -1,7 +1,7 @@
 """Content and tuning values. Dice are (count, sides, modifier)."""
 NAMES = 'Oswald Siegfried Edward Edmund Godfrey Geoffrey Roland Hugh William Robert Conrad Dietrich Otto Alaric Anselm Baldwin Bertram Ulrich Roderick Theobald'.split()
 INVENTORY_LIMIT = 15
-ACTION_MINUTES = {'move': 10, 'search': 10, 'interact': 5, 'combat': 1, 'rest': 480, 'town': 5}
+ACTION_MINUTES = {'move': 5, 'search': 10, 'interact': 5, 'combat': 1, 'rest': 480, 'town': 5}
 REST_ENCOUNTER = 35
 DARK_EXTRA_MONSTER = 25
 DARK_DOUBLE_MONSTER = 15
@@ -33,7 +33,9 @@ TREASURES = {'Brass Candlestick': 1, 'Tin Cup': 1, 'Copper Platter': 3,
 TREASURE_WEIGHTS = [25, 25, 15, 10, 10, 7, 5, 3]
 SECRET_TREASURE_WEIGHTS = [10, 10, 15, 15, 15, 15, 12, 8]
 CONTENT_KINDS = ['Empty', 'Monster', 'Treasure', 'Feature', 'Trap', 'Special', 'Twice']
-NORMAL_CONTENT = [40, 25, 12, 8, 5, 5, 5]
+NORMAL_CONTENT = [30, 27, 17, 10, 5, 5, 6]
+LOOSE_SILVER_CHANCE = 15
+LOOSE_SILVER_DICE = (1, 6, 2)
 SECRET_CONTENT = [20, 20, 30, 10, 5, 5, 10]
 THREATS = {'Weak': ['Giant Rat', 'Cave Bat', 'Goblin', 'Skeleton', 'Zombie'],
            'Medium': ['Giant Spider', 'Ooze', 'Cave Bear'], 'Tough': ['Ogre', 'Troll']}
@@ -44,7 +46,7 @@ MONSTERS = {
     'Giant Rat': (5, 50, (0, 0, 0), (1, 4, -1), 'Wait, these really exist?'),
     'Cave Bat': (3, BAT_HIT, (0, 0, 0), (1, 4, 0), "Don't let it get in your hair"),
     'Goblin': (5, 50, (1, 2, 0), (1, 4, 1), 'Like if a ferret and a lizard crossbred. Gross.'),
-    'Skeleton': (1, 50, (2, 4, 0), (1, 6, 0), 'Is that...Geoffrey?'),
+    'Skeleton': (1, 50, (1, 4, 0), (1, 6, 0), 'Is that...Geoffrey?'),
     'Zombie': (7, 50, (0, 0, 0), (1, 4, 0), "Oh, no, that's Geoffrey"),
     'Giant Spider': (8, 50, (0, 0, 0), (1, 4, 0), 'Venom drips from its fangs'),
     'Ooze': ((2, 6, 0), 40, (0, 0, 0), (1, 4, 0), ''),
@@ -64,7 +66,7 @@ FEATURES = {
     'Fresco': 'A faded fresco covers much of one wall.',
 }
 FEATURE_OUTCOMES = {
-    'Corpse': [('Nothing', 50), ('Item', 25), ('Zombie', 15), ('Trap', 10)],
+    'Corpse': [('Nothing', 50), ('Item', 15), ('Silver', 10), ('Zombie', 15), ('Trap', 10)],
     'Locked Chest': [('Treasure', 70), ('Item', 20), ('Nothing', 10)],
     'Lifelike Statue': [('Nothing', 50), ('Treasure', 20), ('Bless', 15), ('Curse', 10), ('Monster', 5)],
     'Iron Spike': [('Nothing', 70), ('Treasure', 15), ('Trap', 10), ('Secret Door', 5)],
@@ -161,3 +163,27 @@ SERVICE_COSTS = {'Room': 10, 'Meal': 3, 'Drink': 2, 'Healing': 2,
                  'Blessing': 5, 'Cure Afflictions': 5, 'Identification': 5}
 
 TROLL_PURSUIT_CHANCE = 50
+
+
+CONTEXT_ACTIONS = {
+    'Sarcophagus': 'Open Sarcophagus', 'Grave Niches': 'Search Grave Niches',
+    'Casket': 'Open Casket', 'Crypt Statue': 'Examine Statue',
+    'Rotten Chests': 'Open Rotten Chests', 'Ruined Equipment': 'Examine Ruined Equipment',
+    'Stone Plants': 'Examine Stone Plants', 'Stone Tree': 'Examine Stone Tree',
+    'Petrified Fountain': 'Examine Petrified Fountain', 'Floor Shaft': 'Inspect Shaft',
+    'Underwater Glimmer': 'Investigate Underwater Glimmer',
+    'Underwater Doorway': 'Inspect Underwater Doorway',
+    'Fluttering Shape': 'Investigate Fluttering Shape',
+    'Altar': 'Examine Altar', 'Glyphs': 'Examine Glyphs', 'Statuette': 'Examine Statuette',
+    'Vault Cracks': 'Examine Cracks', 'Balustrade': 'Examine Balustrade',
+    'Pillars': 'Examine Pillars', 'Baths': 'Examine Baths',
+}
+CONTEXT_OUTCOMES = {
+    'Sarcophagus': [('Nothing', 45), ('Treasure', 20), ('Undead', 20), ('Undead Treasure', 10), ('Strange', 5)],
+    'Grave Niches': [('Nothing', 60), ('Silver', 15), ('Undead', 20), ('Item', 5)],
+    'Casket': [('Nothing', 60), ('Treasure', 20), ('Undead', 15), ('Strange', 5)],
+    'Rotten Chests': [('Nothing', 65), ('Item', 15), ('Silver', 15), ('Trap', 5)],
+    'Underwater Glimmer': [('Nothing', 60), ('Treasure', 20), ('Silver', 10), ('Trap', 10)],
+    'Underwater Doorway': [('Nothing', 75), ('Secret Door', 15), ('Trap', 10)],
+    'Fluttering Shape': [('Nothing', 70), ('Monster', 20), ('Strange', 10)],
+}

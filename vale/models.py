@@ -15,9 +15,12 @@ class Item:
     extracted: bool = False
     burn: int = 0
     venom: bool = False
+    silver_amount: int = 0
 
     @property
     def label(self):
+        if self.name == 'Loose Silver':
+            return f'Loose Silver ({self.silver_amount} sp)'
         prefix = '' if self.condition == 'Normal' else self.condition + ' '
         magic = ('Blessed ' if self.magic == 'Bless' else 'Cursed ') if self.identified and self.magic else ('Unidentified ' if self.magic else '')
         suffix = f' ({self.spell})' if self.name == 'Scroll' else ''
@@ -25,6 +28,8 @@ class Item:
 
     @property
     def value(self):
+        if self.name == 'Loose Silver':
+            return self.silver_amount
         value = D.TREASURES.get(self.name, D.PRICES.get(self.name, 0))
         factor = {'Normal': 1, 'Worn': .75, 'Ragged': .5, 'Ruined': .1}[self.condition]
         return max(0, int(value * factor))
@@ -196,6 +201,8 @@ class State:
     drinks: int = 0
     drink_day: int = -1
     id: str = ''
+    expedition_silver: int = 0
+    town_screen: str = 'Vale'
 
     @property
     def day(self):

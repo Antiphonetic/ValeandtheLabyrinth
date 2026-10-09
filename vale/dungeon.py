@@ -36,6 +36,43 @@ def treasure(rng, secret=False):
     return Item(weighted(rng, list(D.TREASURES), D.SECRET_TREASURE_WEIGHTS if secret else D.TREASURE_WEIGHTS), found=True)
 
 
+def silver_cache(rng):
+    return Item('Loose Silver', found=True, silver_amount=dice(rng, D.LOOSE_SILVER_DICE)[0])
+
+
+def ordinary_treasure(rng, secret=False):
+    if not secret and chance(rng, D.LOOSE_SILVER_CHANCE):
+        return silver_cache(rng)
+    return treasure(rng, secret)
+
+
+def contextual_elements(name, text, shaft=False):
+    objects = []
+    if name == 'Sunken Crypt':
+        objects = (['Sarcophagus'] if 'sarcophagus' in text else ['Grave Niches']
+                   if 'grave niches' in text else ['Crypt Statue', 'Casket'])
+    elif name == 'Ancient Armory':
+        objects = ['Rotten Chests', 'Ruined Equipment']
+    elif name == 'Petrified Courtyard':
+        objects = ['Stone Plants', 'Stone Tree' if 'ash tree' in text else 'Petrified Fountain']
+    elif name == 'Damp Chamber' and shaft:
+        objects = ['Floor Shaft']
+    elif name == 'Flooded Chamber':
+        objects = ['Underwater Glimmer' if 'glimmering' in text else
+                   'Underwater Doorway' if 'doorway' in text else 'Fluttering Shape']
+    elif name == 'Desecrated Temple':
+        objects = ['Altar', 'Glyphs', 'Statuette']
+    elif name == 'Decrepit Vault':
+        objects = ['Vault Cracks']
+    elif name == 'Terraced Gallery':
+        objects = ['Balustrade']
+    elif name == 'Pillared Hall':
+        objects = ['Pillars']
+    elif name == 'Mosaic Baths':
+        objects = ['Baths']
+    return [Element(obj) for obj in objects]
+
+
 def spawn(rng, name=None):
     if name is None:
         threat = weighted(rng, list(D.THREATS), D.THREAT_WEIGHTS)
@@ -136,7 +173,7 @@ def generate(rng, room_id, depth, secret=False, darkness=False, parent=None):
         if content == 'Monster':
             room.monsters.append(spawn(rng))
         elif content == 'Treasure':
-            room.loot.append(treasure(rng, secret))
+            room.loot.append(ordinary_treasure(rng, secret))
         elif content == 'Feature':
             room.elements.append(Element(rng.choice(list(D.FEATURES)), difficulty=rng.choice(D.LOCK_DIFFICULTIES)))
         elif content == 'Trap':
@@ -145,8 +182,10 @@ def generate(rng, room_id, depth, secret=False, darkness=False, parent=None):
             special = rng.choice(list(D.SPECIALS))
             animal = rng.choice(['Giant Rat', 'Cave Bat', 'Cave Bear']) if special == 'Wounded Animal' else ''
             room.elements.append(Element(special, animal=animal))
-    if shaft and chance(rng, D.SHAFT_NAVIGATION_CHANCE):
-        room.elements.append(Element('Deep Shaft'))
+    room.elements.extend(contextual_elements(name, text, shaft))
+    if shaft:
+        # Decide navigability once and save it; inspection does not reroll it.
+        next(e for e in room.elements if e.name == 'Floor Shaft').animal = 'navigable' if chance(rng, D.SHAFT_NAVIGATION_CHANCE) else ''
     if chance(rng, D.HIDDEN_CHANCE):
         room.hidden = rng.choice(['Secret Door', 'Cache'])
     if darkness and not daylight:
